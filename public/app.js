@@ -301,3 +301,16 @@ async function init() {
 }
 
 init();
+
+// 页面打开时，每 5 分钟自动重新读取一次最新数据。
+// GitHub Actions 仍然是每小时更新数据文件；这里负责让已打开的网页不用手动刷新。
+setInterval(() => {
+  init();
+}, 5 * 60 * 1000);
+
+// 用户切回页面时，也自动刷新一次。
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    init();
+  }
+});
