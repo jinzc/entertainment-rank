@@ -349,3 +349,80 @@ h1 {
     text-align: left;
   }
 }
+/* 页面顶部简化：去掉说明文字后的间距 */
+.hero {
+  padding-bottom: 24px;
+}
+
+.hero-inner {
+  align-items: center;
+}
+
+/* 如果 HTML 里还没删 subtitle 和 JSON 链接，这里也会兜底隐藏 */
+.subtitle,
+.ghost-link {
+  display: none !important;
+}
+
+/* 平台下多个榜单时，改成左右卡片结构 */
+.board-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+/* 单榜单平台，比如微博，单独占满一行 */
+.board-card:only-child {
+  grid-column: 1 / -1;
+}
+
+/* 卡片更适合左右并排展示 */
+.board-card {
+  min-width: 0;
+}
+
+/* 榜单标题区域更紧凑 */
+.panel-head {
+  padding: 4px 4px 16px;
+}
+
+.panel h2 {
+  font-size: 28px;
+}
+
+/* 榜单内容在双栏下更舒服 */
+.rank-row {
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+}
+
+.rank-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rank-heat {
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 窄屏自动恢复单列，手机端不挤 */
+@media (max-width: 860px) {
+  .hero-inner {
+    grid-template-columns: 1fr;
+  }
+
+  .board-list {
+    grid-template-columns: 1fr;
+  }
+
+  .board-card:only-child {
+    grid-column: auto;
+  }
+
+  .rank-title {
+    white-space: normal;
+  }
+}
