@@ -1,0 +1,15 @@
+{
+  "name": "entertainment-rank",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "每小时自动更新的全网文娱榜单，数据源来自用户指定的 TopHub 节点。",
+  "scripts": {
+    "update": "node scripts/update.js",
+    "build": "node scripts/build.js && node scripts/update.js",
+    "check": "node --check scripts/build.js && node --check scripts/update.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
