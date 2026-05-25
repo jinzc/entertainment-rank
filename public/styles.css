@@ -426,3 +426,120 @@ h1 {
     white-space: normal;
   }
 }
+/* 修复双栏下文字溢出导致重叠 */
+body {
+  overflow-x: hidden;
+}
+
+/* 多榜单平台：左右结构 */
+.board-list {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 24px !important;
+  align-items: start !important;
+}
+
+/* 微博这种单榜单，占满一整行 */
+.board-card:only-child {
+  grid-column: 1 / -1;
+}
+
+.board-card {
+  min-width: 0 !important;
+  overflow: hidden;
+}
+
+/* 去掉 ol 自带序号，避免和自定义序号重复 */
+.rank-list {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 16px 0 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+}
+
+.rank-list > li {
+  list-style: none !important;
+}
+
+.rank-list > li::marker {
+  content: "" !important;
+}
+
+/* 榜单每一行重新排版 */
+.rank-row {
+  display: grid !important;
+  grid-template-columns: 34px minmax(0, 1fr) !important;
+  grid-template-areas:
+    "no title"
+    ". heat";
+  column-gap: 10px !important;
+  row-gap: 3px !important;
+  align-items: start !important;
+  padding: 10px 0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  min-width: 0 !important;
+}
+
+/* 自定义序号 */
+.rank-no {
+  grid-area: no;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: #ffd15a;
+  background: rgba(255, 209, 90, 0.12);
+  flex-shrink: 0;
+}
+
+/* 标题最多两行，避免撑出卡片 */
+.rank-title {
+  grid-area: title;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  white-space: normal !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.45;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* 热度信息放到标题下面，避免挤在右侧重叠 */
+.rank-heat {
+  grid-area: heat;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: 12px;
+  opacity: 0.58;
+}
+
+/* 卡片标题区域紧凑一点 */
+.board-head {
+  gap: 12px;
+}
+
+.board-head h3 {
+  margin-bottom: 6px;
+}
+
+/* 手机或窄屏恢复单列 */
+@media (max-width: 920px) {
+  .board-list {
+    grid-template-columns: 1fr !important;
+  }
+
+  .board-card:only-child {
+    grid-column: auto;
+  }
+}
