@@ -1,5 +1,68 @@
 const PLATFORM_ORDER = ['微博', '抖音', '百度', 'B站', '豆瓣'];
 
+const SOURCE_DEFS = [
+  {
+    id: 'weibo_entertainment',
+    name: '微博·文娱榜',
+    platform: '微博',
+    url: 'https://tophub.today/n/3QeLwJEd7k'
+  },
+  {
+    id: 'douyin_entertainment',
+    name: '抖音·娱乐榜',
+    platform: '抖音',
+    url: 'https://tophub.today/n/2me33NBewj'
+  },
+  {
+    id: 'douyin_star',
+    name: '抖音·明星榜',
+    platform: '抖音',
+    url: 'https://tophub.today/n/RrvWy7Re5z'
+  },
+  {
+    id: 'baidu_movie',
+    name: '百度·电影榜',
+    platform: '百度',
+    url: 'https://tophub.today/n/4KvxRL1ekx'
+  },
+  {
+    id: 'baidu_tv',
+    name: '百度·电视剧榜',
+    platform: '百度',
+    url: 'https://tophub.today/n/ENeYp23dY4'
+  },
+  {
+    id: 'bilibili_film_tv',
+    name: '哔哩哔哩·影视榜',
+    platform: 'B站',
+    url: 'https://tophub.today/n/MZd77ypdrO'
+  },
+  {
+    id: 'bilibili_entertainment',
+    name: '哔哩哔哩·娱乐榜',
+    platform: 'B站',
+    url: 'https://tophub.today/n/YKd67qneaP'
+  },
+  {
+    id: 'douban_new_movies',
+    name: '豆瓣电影·豆瓣新片榜',
+    platform: '豆瓣',
+    url: 'https://tophub.today/n/mDOvnyBoEB'
+  },
+  {
+    id: 'douban_now_showing',
+    name: '豆瓣电影·正在上映的电影',
+    platform: '豆瓣',
+    url: 'https://tophub.today/n/m4ejbjyexE'
+  },
+  {
+    id: 'douban_hot_series',
+    name: '豆瓣电影·热门剧集排行榜',
+    platform: '豆瓣',
+    url: 'https://tophub.today/n/nBe0JLBv37'
+  }
+];
+
 let data = null;
 let activePlatform = PLATFORM_ORDER[0];
 
@@ -15,39 +78,57 @@ function escapeHtml(str = '') {
   }[s]));
 }
 
-function normalizePlatform(source = {}) {
-  const text = [
-    source.platform,
-    source.name,
-    source.title,
-    source.id,
-    source.url
-  ].filter(Boolean).join(' ');
+function findStatus(source) {
+  const lists = [
+    data?.sources,
+    data?.sourceStatus,
+    data?.boards
+  ].filter(Array.isArray);
 
-  if (text.includes('微博') || text.toLowerCase().includes('weibo')) return '微博';
-  if (text.includes('抖音') || text.toLowerCase().includes('douyin')) return '抖音';
-  if (text.includes('百度') || text.toLowerCase().includes('baidu')) return '百度';
-  if (
-    text.includes('哔哩') ||
-    text.includes('B站') ||
-    text.includes('b站') ||
-    text.toLowerCase().includes('bilibili')
-  ) return 'B站';
-  if (text.includes('豆瓣') || text.toLowerCase().includes('douban')) return '豆瓣';
+  for (const list of lists) {
+    const found = list.find(item =>
+      item.id === source.id ||
+      item.name === source.name ||
+      item.title === source.name
+    );
 
-  return '其他';
+    if (found) return found;
+  }
+
+  return {};
 }
 
-function getSourceItems(source = {}) {
-  const id = source.id;
+function getSourceItems(source, status = {}) {
+  if (Array.isArray(data?.raw?.[source.id])) return data.raw[source.id];
+  if (Array.isArray(data?.items?.[source.id])) return data.items[source.id];
+  if (Array.isArray(data?.boards?.[source.id])) return data.boards[source.id];
 
-  if (Array.isArray(source.items)) return source.items;
-  if (Array.isArray(source.data)) return source.data;
-  if (Array.isArray(source.list)) return source.list;
+  if (Array.isArray(status.items)) return status.items;
+  if (Array.isArray(status.data)) return status.data;
+  if (Array.isArray(status.list)) return status.list;
 
-  if (id && Array.isArray(data?.raw?.[id])) return data.raw[id];
-  if (id && Array.isArray(data?.items?.[id])) return data.items[id];
-  if (id && Array.isArray(data?.boards?.[id])) return data.boards[id];
+  if (Array.isArray(data?.platforms)) {
+    for (const platform of data.platforms) {
+      const matched = (platform.sources || []).find(item =>
+        item.id === source.id ||
+        item.name === source.name ||
+        item.title === source.name
+      );
+
+      if (matched?.items && Array.isArray(matched.items)) {
+        return matched.items;
+      }
+    }
+  }
+
+  if (Array.isArray(data?.items)) {
+    return data.items.filter(item =>
+      item.sourceId === source.id ||
+      item.source === source.id ||
+      item.sourceName === source.name ||
+      item.board === source.name
+    );
+  }
 
   return [];
 }
@@ -57,59 +138,38 @@ function normalizeItem(item = {}, index = 0, source = {}) {
     rank: item.rank || item.index || item.no || index + 1,
     title: item.title || item.name || item.keyword || item.text || '',
     url: item.url || item.link || item.href || source.url || '#',
-    heat: item.heat || item.hot || item.value || item.score || item.desc || ''
+    heat: item.heat || item.hot || item.value || item.desc || ''
   };
 }
 
-function buildPlatformsFromSources() {
-  const grouped = PLATFORM_ORDER.map(name => ({
-    name,
-    sources: []
-  }));
+function buildPlatforms() {
+  return PLATFORM_ORDER.map(platformName => {
+    const sources = SOURCE_DEFS
+      .filter(source => source.platform === platformName)
+      .map(source => {
+        const status = findStatus(source);
+        const items = getSourceItems(source, status).map((item, index) =>
+          normalizeItem(item, index, source)
+        );
 
-  const sourceList = []
-    .concat(Array.isArray(data?.sources) ? data.sources : [])
-    .concat(Array.isArray(data?.sourceStatus) ? data.sourceStatus : [])
-    .concat(Array.isArray(data?.boards) ? data.boards : []);
+        return {
+          ...source,
+          ok: status.ok !== false,
+          message: status.message || status.error || '',
+          count: items.length,
+          items
+        };
+      });
 
-  sourceList.forEach(source => {
-    const platformName = normalizePlatform(source);
-    const platform = grouped.find(item => item.name === platformName);
-    if (!platform) return;
-
-    const items = getSourceItems(source).map((item, index) => normalizeItem(item, index, source));
-
-    platform.sources.push({
-      id: source.id,
-      name: source.name || source.title || source.id || platformName,
-      platform: platformName,
-      url: source.url || '#',
-      ok: source.ok !== false,
-      count: items.length,
-      message: source.message || source.error || '',
-      items
-    });
+    return {
+      name: platformName,
+      sources
+    };
   });
-
-  return grouped;
-}
-
-function getPlatforms() {
-  if (Array.isArray(data?.platforms) && data.platforms.length > 0) {
-    return PLATFORM_ORDER.map(name => {
-      const platform = data.platforms.find(item => item.name === name);
-      return {
-        name,
-        sources: platform?.sources || []
-      };
-    });
-  }
-
-  return buildPlatformsFromSources();
 }
 
 function getPlatform(name) {
-  return getPlatforms().find(platform => platform.name === name) || {
+  return buildPlatforms().find(platform => platform.name === name) || {
     name,
     sources: []
   };
@@ -121,7 +181,7 @@ function renderTabs() {
 
   tabs.innerHTML = PLATFORM_ORDER.map(name => {
     const platform = getPlatform(name);
-    const boardCount = platform.sources?.length || 0;
+    const boardCount = platform.sources.length;
 
     return `
       <button class="tab ${name === activePlatform ? 'active' : ''}" data-platform="${escapeHtml(name)}">
