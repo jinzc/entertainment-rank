@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>全网文娱榜</title>
+  <meta name="description" content="聚合微博、抖音、百度、B站、豆瓣等来源的文娱热点榜单，每小时自动更新。" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <div>
+        <p class="eyebrow">ENTERTAINMENT HOT RANK</p>
+        <h1>全网文娱榜</h1>
+        <p class="subtitle">聚合微博、抖音、百度、哔哩哔哩、豆瓣等文娱来源，按综合热度、平台、分类查看。</p>
+      </div>
+      <div class="status-card">
+        <span class="status-label">更新时间</span>
+        <strong id="updatedAt">加载中</strong>
+        <span id="sourceStatus">正在读取数据</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="toolbar" aria-label="榜单筛选">
+      <div class="tabs" id="tabs"></div>
+      <label class="search-box">
+        <span>搜索</span>
+        <input id="searchInput" type="search" placeholder="输入明星、剧名、电影、话题关键词" />
+      </label>
+    </section>
+
+    <section class="summary-grid" id="summaryGrid"></section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2 id="listTitle">综合榜单</h2>
+          <p id="listHint">按多来源出现、来源内排名和热度数字综合排序。</p>
+        </div>
+        <a class="ghost-link" href="./data/latest.json" target="_blank" rel="noreferrer">查看 JSON 数据</a>
+      </div>
+      <div id="rankList" class="rank-list" aria-live="polite"></div>
+      <div id="emptyState" class="empty-state" hidden>没有匹配到内容。</div>
+    </section>
+
+    <section class="panel source-panel">
+      <div class="panel-head">
+        <div>
+          <h2>来源状态</h2>
+          <p>如果某个来源抓取失败，会在这里显示原因，不影响其他来源展示。</p>
+        </div>
+      </div>
+      <div id="sources" class="source-grid"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>数据来源：用户指定的 TopHub 节点。页面由 GitHub Actions 每小时自动更新。</p>
+  </footer>
+
+  <script src="./app.js" type="module"></script>
+</body>
+</html>
