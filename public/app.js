@@ -1,147 +1,155 @@
-const tabs = [
-  { id: 'overall', label: '综合榜', title: '综合榜单', hint: '按多来源出现、来源内排名和热度数字综合排序。' },
-  { id: 'platform:微博', label: '微博', title: '微博平台榜', hint: '微博来源内的文娱热点聚合。' },
-  { id: 'platform:抖音', label: '抖音', title: '抖音平台榜', hint: '抖音娱乐榜和明星榜聚合。' },
-  { id: 'platform:百度', label: '百度', title: '百度平台榜', hint: '百度电影榜和电视剧榜聚合。' },
-  { id: 'platform:哔哩哔哩', label: 'B站', title: '哔哩哔哩平台榜', hint: 'B站影视榜和娱乐榜聚合。' },
-  { id: 'platform:豆瓣', label: '豆瓣', title: '豆瓣平台榜', hint: '豆瓣新片、正在上映和热门剧集聚合。' },
-  { id: 'category:电影', label: '电影', title: '电影榜', hint: '百度电影、豆瓣电影相关来源聚合。' },
-  { id: 'category:电视剧', label: '电视剧', title: '电视剧榜', hint: '电视剧与热门剧集相关来源聚合。' },
-  { id: 'category:明星', label: '明星', title: '明星榜', hint: '明星相关热点聚合。' },
-  { id: 'category:娱乐', label: '娱乐', title: '娱乐榜', hint: '娱乐类热点聚合。' }
-];
+const PLATFORM_ORDER = ['微博', '抖音', '百度', 'B站', '豆瓣'];
 
 let data = null;
-let activeTab = 'overall';
-let keyword = '';
+let activePlatform = PLATFORM_ORDER[0];
 
 const el = id => document.getElementById(id);
 
 function escapeHtml(str = '') {
-  return String(str).replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]));
+  return String(str).replace(/[&<>"']/g, s => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[s]));
 }
 
-function getItems() {
-  if (!data) return [];
-  if (activeTab === 'overall') return data.rankings.overall || [];
-  const [type, name] = activeTab.split(':');
-  if (type === 'platform') return data.rankings.platforms?.[name] || [];
-  if (type === 'category') return data.rankings.categories?.[name] || [];
-  return [];
+function normalizePlatform(platform = '') {
+  if (platform.includes('微博')) return '微博';
+  if (platform.includes('抖音')) return '抖音';
+  if (platform.includes('百度')) return '百度';
+  if (platform.includes('哔哩') || platform.includes('B站') || platform.includes('b站')) return 'B站';
+  if (platform.includes('豆瓣')) return '豆瓣';
+  return platform || '其他';
+}
+
+function getPlatforms() {
+  if (Array.isArray(data?.platforms)) {
+    return data.platforms;
+  }
+
+  const grouped = PLATFORM_ORDER.map(name => ({
+    name,
+    sources: []
+  }));
+
+  const sourceList = data?.sources || [];
+  const raw = data?.raw || {};
+
+  sourceList.forEach(source => {
+    const platformName = normalizePlatform(source.platform || source.name || '');
+    const platform = grouped.find(item => item.name === platformName);
+    if (!platform) return;
+
+    platform.sources.push({
+      id: source.id,
+      name: source.name,
+      platform: platformName,
+      url: source.url,
+      ok: source.ok !== false,
+      count: source.count || raw[source.id]?.length || 0,
+      message: source.message || '',
+      items: raw[source.id] || source.items || []
+    });
+  });
+
+  return grouped;
+}
+
+function getPlatform(name) {
+  return getPlatforms().find(platform => platform.name === name) || {
+    name,
+    sources: []
+  };
 }
 
 function renderTabs() {
-  el('tabs').innerHTML = tabs.map(tab => `
-    <button class="tab ${tab.id === activeTab ? 'active' : ''}" data-tab="${tab.id}">${tab.label}</button>
-  `).join('');
+  el('tabs').innerHTML = PLATFORM_ORDER.map(name => {
+    const platform = getPlatform(name);
+    const boardCount = platform.sources?.length || 0;
+
+    return `
+      <button class="tab ${name === activePlatform ? 'active' : ''}" data-platform="${escapeHtml(name)}">
+        ${escapeHtml(name)}<span>${boardCount}</span>
+      </button>
+    `;
+  }).join('');
 
   el('tabs').querySelectorAll('button').forEach(button => {
     button.addEventListener('click', () => {
-      activeTab = button.dataset.tab;
+      activePlatform = button.dataset.platform;
       render();
     });
   });
 }
 
-function renderSummary() {
-  const meta = data?.meta || {};
-  const cards = [
-    ['来源', `${meta.successCount || 0}/${meta.sourceCount || 0}`],
-    ['条目', meta.itemCount || 0],
-    ['综合榜', data?.rankings?.overall?.length || 0],
-    ['失败来源', meta.failCount || 0]
-  ];
-  el('summaryGrid').innerHTML = cards.map(([label, value]) => `
-    <div class="summary-card">
-      <span class="card-label">${label}</span>
-      <strong>${value}</strong>
-    </div>
+function renderBoard(source) {
+  const items = source.items || [];
+  const status = source.ok
+    ? `${items.length} 条`
+    : `抓取失败：${source.message || '未知原因'}`;
+
+  const rows = items.map(item => `
+    <li class="rank-row">
+      <span class="rank-no">${escapeHtml(item.rank || '')}</span>
+      <a class="rank-title" href=" " target="_blank" rel="noreferrer">
+        ${escapeHtml(item.title)}
+      </a >
+      ${item.heat ? `<span class="rank-heat">${escapeHtml(item.heat)}</span>` : '<span class="rank-heat"></span>'}
+    </li>
   `).join('');
-}
 
-function sourceChips(item) {
-  return (item.sources || []).slice(0, 6).map(s => `
-    <a class="chip" href="${escapeHtml(s.sourceUrl)}" target="_blank" rel="noreferrer">
-      ${escapeHtml(s.sourceName)} · #${s.rank}${s.heat ? ` · ${escapeHtml(s.heat)}` : ''}
-    </a>
-  `).join('');
-}
-
-function renderList() {
-  const tab = tabs.find(t => t.id === activeTab) || tabs[0];
-  el('listTitle').textContent = tab.title;
-  el('listHint').textContent = tab.hint;
-
-  const q = keyword.trim().toLowerCase();
-  const items = getItems().filter(item => {
-    if (!q) return true;
-    return [item.title, ...(item.platforms || []), ...(item.categories || []), ...(item.sources || []).map(s => s.sourceName)]
-      .join(' ')
-      .toLowerCase()
-      .includes(q);
-  });
-
-  el('emptyState').hidden = items.length > 0;
-  el('rankList').innerHTML = items.map(item => `
-    <article class="rank-item">
-      <div class="rank-no">${item.rank}</div>
-      <div>
-        <a class="rank-title" href="${escapeHtml(item.bestUrl || '#')}" target="_blank" rel="noreferrer">${escapeHtml(item.title)}</a>
-        <div class="meta-line">
-          <span class="chip">平台：${escapeHtml((item.platforms || []).join(' / ') || '-')}</span>
-          <span class="chip">分类：${escapeHtml((item.categories || []).join(' / ') || '-')}</span>
-          <span class="chip">来源数：${item.sourceCount || 1}</span>
-          ${sourceChips(item)}
+  return `
+    <article class="board-card">
+      <div class="board-head">
+        <div>
+          <h3>${escapeHtml(source.name)}</h3>
+          <p>${escapeHtml(status)}</p >
         </div>
+        <a class="source-link" href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer">原榜单</a >
       </div>
-      <div class="score">
-        综合分
-        <strong>${item.score || 0}</strong>
-      </div>
+      ${items.length > 0 ? `<ol class="rank-list">${rows}</ol>` : '<div class="board-empty">本次未抓取到条目。</div>'}
     </article>
-  `).join('');
+  `;
 }
 
-function renderSources() {
-  const sources = data?.sources || [];
-  el('sources').innerHTML = sources.map(source => `
-    <a class="source-card" href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer">
-      <span class="source-title">
-        <span>${escapeHtml(source.name)}</span>
-        <span class="${source.ok ? 'ok' : 'fail'}">${source.ok ? '成功' : '失败'}</span>
-      </span>
-      <small>${escapeHtml(source.platform)} / ${escapeHtml(source.category)} · ${source.count || 0} 条</small>
-      <small>${escapeHtml(source.message || '')}</small>
-    </a>
-  `).join('');
+function renderBoards() {
+  const platform = getPlatform(activePlatform);
+  const sources = platform.sources || [];
+
+  el('platformTitle').textContent = `${activePlatform}榜单`;
+  el('platformHint').textContent = `${activePlatform}下共 ${sources.length} 个原始榜单，按来源分别展示。`;
+
+  el('emptyState').hidden = sources.length > 0;
+  el('boardList').innerHTML = sources.map(renderBoard).join('');
 }
 
 function render() {
   renderTabs();
-  renderSummary();
-  renderList();
-  renderSources();
+  renderBoards();
 }
 
 async function init() {
   try {
-    const response = await fetch(`./data/latest.json?t=${Date.now()}`, { cache: 'no-store' });
+    const response = await fetch(`./data/latest.json?t=${Date.now()}`, {
+      cache: 'no-store'
+    });
+
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
     data = await response.json();
+
     el('updatedAt').textContent = data.meta?.generatedAtCN || '尚未更新';
-    el('sourceStatus').textContent = `成功 ${data.meta?.successCount || 0} 个来源，失败 ${data.meta?.failCount || 0} 个来源`;
+    el('sourceStatus').textContent = `来源 ${data.meta?.successCount || 0}/${data.meta?.sourceCount || 0}`;
+
     render();
   } catch (err) {
     el('updatedAt').textContent = '数据加载失败';
     el('sourceStatus').textContent = err.message;
-    el('rankList').innerHTML = '';
+    el('boardList').innerHTML = '';
     el('emptyState').hidden = false;
   }
 }
-
-el('searchInput').addEventListener('input', e => {
-  keyword = e.target.value;
-  renderList();
-});
 
 init();
